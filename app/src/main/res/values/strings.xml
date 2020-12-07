@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Project Game 2D Planes</string>
+    <string name="name_game">Game Bird</string>
+    <string name="highScore">High Score</string>
+    <string name="play">Play</string>
+    <string name="description">Hình ảnh</string>
+</resources>
