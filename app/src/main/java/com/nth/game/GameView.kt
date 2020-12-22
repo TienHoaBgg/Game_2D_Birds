@@ -1,5 +1,6 @@
 package com.nth.game
 
+import android.R.string
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -14,6 +15,7 @@ import android.view.MotionEvent
 import android.view.SurfaceView
 import java.util.*
 import kotlin.collections.ArrayList
+
 
 /**
  * Created by NguyenTienHoa on 12/7/2020
@@ -73,7 +75,7 @@ class GameView : SurfaceView, Runnable {
         paint.textSize = 128f
         paint.color = Color.WHITE
         birds = mutableListOf()
-        for (i in 0..3) {
+        for (i in 0..4) {
             val bird = Bird(resources)
             birds.add(bird)
         }
@@ -89,47 +91,79 @@ class GameView : SurfaceView, Runnable {
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        when (event!!.action) {
-            MotionEvent.ACTION_DOWN -> if (event.x < screenX / 2) {
-                flight.isGoingUp = true
-            }
-            MotionEvent.ACTION_UP -> {
-                flight.isGoingUp = false
-                if (event.x > screenX / 2) flight.toShoot++
-            }
+
+        if(event!!.x < screenX/2 && event.y  < screenY/2 ){
+            flight.goingTo = 0
+
+        }else if (event.x < screenX/2 && event.y  > screenY/2 ){
+            flight.goingTo = 1
+        }else{
+            flight.goingTo = 2
         }
+
         return true
     }
-
 
     private fun update() {
         background1.x -= (10 * screenRatioX).toInt()
         background2.x -= (10 * screenRatioX).toInt()
+
         if (background1.x + background1.background.width < 0) {
             background1.x = screenX
         }
         if (background2.x + background2.background.width < 0) {
             background2.x = screenX
         }
-        if (flight.isGoingUp) {
-            flight.y -= (30 * screenRatioY).toInt()
-        } else {
-            flight.y += (30 * screenRatioY).toInt()
+
+        when(flight.goingTo){
+            0 -> {
+                flight.y -= (30 * screenRatioY).toInt()
+            }
+            1 -> {
+                flight.y += (30 * screenRatioY).toInt()
+            }
+            2 -> {
+                flight.x += (30 * screenRatioX).toInt()
+            }
+            3 -> {
+                flight.x -= (30 * screenRatioX).toInt()
+            }
         }
-        if (flight.y < 0)
+
+        if (flight.y < 0) {
             flight.y = 0F
-        if (flight.y >= screenY - flight.height)
+            flight.goingTo = 1
+            soundPool.play(sound, 1f, 1f, 0, 0, 1f)
+        }
+        if (flight.y >= screenY - flight.height) {
             flight.y = screenY - flight.height
+            flight.goingTo = 0
+            soundPool.play(sound, 1f, 1f, 0, 0, 1f)
+        }
+
+        if ( flight.x > screenX/2 ){
+            flight.x = screenX/2
+            flight.goingTo = 3
+            soundPool.play(sound, 1f, 1f, 0, 0, 1f)
+        }
+
+        if (flight.x < 0){
+            flight.x = 0f
+            flight.isGoingRight = true
+            flight.goingTo = 2
+            soundPool.play(sound, 1f, 1f, 0, 0, 1f)
+        }
 
         val trash: MutableList<Bullet> = arrayListOf()
+
         for (bullet in bullets) {
             if (bullet.x > screenX) trash.add(bullet)
             bullet.x += (50 * screenRatioX).toInt()
             for (bird in birds) {
                 if (Rect.intersects(
-                        bird.getCollisionShape(),
-                        bullet.getCollisionShape()
-                    )
+                                bird.getCollisionShape(),
+                                bullet.getCollisionShape()
+                        )
                 ) {
                     score++
                     bird.x = -500
@@ -139,13 +173,14 @@ class GameView : SurfaceView, Runnable {
             }
         }
         for (bullet in trash) bullets.remove(bullet)
+
         for (bird in birds) {
             bird.x -= bird.speed
             if (bird.x + bird.width < 0) {
-                if (!bird.wasShot) {
-                    isGameOver = true
-                    return
-                }
+//                if (!bird.wasShot) {
+//                    isGameOver = true
+//                    return
+//                }
                 val bound = (30 * screenRatioX).toInt()
                 bird.speed = random.nextInt(bound)
                 if (bird.speed < 10 * screenRatioX) bird.speed =
@@ -154,10 +189,15 @@ class GameView : SurfaceView, Runnable {
                 bird.y = random.nextInt((screenY - bird.height).toInt())
                 bird.wasShot = false
             }
+
             if (Rect.intersects(bird.getCollisionShape(), flight.getCollisionShape())) {
+                bird.wasShot = true
+                birds.remove(bird)
+                soundPool.play(sound, 1f, 1f, 0, 0, 1f)
                 isGameOver = true
-                return
+                break
             }
+
         }
     }
 
@@ -166,22 +206,28 @@ class GameView : SurfaceView, Runnable {
             val canvas = holder.lockCanvas()
             canvas.drawBitmap(background1.background, background1.x, background1.y, paint)
             canvas.drawBitmap(background2.background, background2.x, background2.y, paint)
-            for (bird in birds) canvas.drawBitmap(
-                bird.getBird(),
-                bird.x.toFloat(),
-                bird.y.toFloat(),
-                paint
-            )
-            canvas.drawText(score.toString() + "", screenX / 2f, 164f, paint)
+
             if (isGameOver) {
                 isPlaying = false
-                canvas.drawBitmap(flight.getDead(), flight.x, flight.y, paint)
+                val gameOver = "GAME OVER"
+                val widthString = paint.measureText(gameOver)
+                paint.color = Color.BLACK
+                canvas.drawText(gameOver, screenX / 2f - widthString/2, screenY / 2, paint)
                 holder.unlockCanvasAndPost(canvas)
                 saveIfHighScore()
                 waitBeforeExiting()
                 return
             }
             canvas.drawBitmap(flight.getFlight(), flight.x, flight.y, paint)
+            for (bird in birds) canvas.drawBitmap(
+                    bird.getBird(),
+                    bird.x.toFloat(),
+                    bird.y.toFloat(),
+                    paint
+            )
+            canvas.drawText(score.toString() + "", screenX / 2f, 164f, paint)
+
+
             for (bullet in bullets) canvas.drawBitmap(bullet.bullet, bullet.x, bullet.y, paint)
             holder.unlockCanvasAndPost(canvas)
         }
@@ -207,7 +253,7 @@ class GameView : SurfaceView, Runnable {
 
     private fun sleep() {
         try {
-            Thread.sleep(80)
+            Thread.sleep(30)
         } catch (e: InterruptedException) {
             e.printStackTrace()
         }

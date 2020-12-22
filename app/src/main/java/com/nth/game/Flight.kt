@@ -15,6 +15,9 @@ class Flight {
 
     var toShoot = 0
     var isGoingUp = false
+    var isDie = false
+    var isGoingRight = false
+    var goingTo = 0
     var x = 0f
     var y:Float = 0f
     var width:Int = 0
