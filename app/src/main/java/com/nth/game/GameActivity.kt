@@ -12,7 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 class GameActivity : AppCompatActivity() {
 
     private lateinit var gameView: GameView
-
+    private lateinit var highScoreView: HighScoreView
+    private var idA = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,17 +24,29 @@ class GameActivity : AppCompatActivity() {
         val point = Point()
         windowManager.defaultDisplay.getSize(point)
         gameView = GameView(this, point.x.toFloat(), point.y.toFloat())
-        setContentView(gameView)
+        highScoreView = HighScoreView(this, point.x.toFloat(), point.y.toFloat())
+        idA = intent.getIntExtra("Activity",1)
+        when(idA){
+            1 -> setContentView(gameView)
+            2-> setContentView(highScoreView)
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        gameView.pause()
+        when(idA){
+            1 -> gameView.pause()
+            2-> highScoreView.pause()
+        }
+
     }
 
     override fun onResume() {
         super.onResume()
-        gameView.resume()
+        when(idA){
+            1 -> gameView.resume()
+            2-> highScoreView.resume()
+        }
     }
 
 }

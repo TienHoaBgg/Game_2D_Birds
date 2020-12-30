@@ -11,8 +11,11 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.SoundPool
 import android.os.Build
+import android.util.Log
 import android.view.MotionEvent
 import android.view.SurfaceView
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -35,6 +38,7 @@ class GameView : SurfaceView, Runnable {
     private var screenY: Float
     private var score = 0
     private var paint: Paint
+    private var paint1: Paint
     private var birds: MutableList<Bird>
     private var prefs: SharedPreferences
     private var random: Random
@@ -45,6 +49,8 @@ class GameView : SurfaceView, Runnable {
     private var activity: GameActivity
     private var background1: Background
     private var background2: Background
+    private var highScores:MutableList<Int>
+
 
     constructor(activity: GameActivity, screenX: Float, screenY: Float) : super(activity) {
         this.activity = activity
@@ -58,7 +64,13 @@ class GameView : SurfaceView, Runnable {
                 .setAudioAttributes(audioAttributes)
                 .build()
         } else SoundPool(1, AudioManager.STREAM_MUSIC, 0)
+        highScores = mutableListOf()
 
+        val scoreTemp = prefs.getString("highScore","[0,0,0,0,0,0]")
+        if (scoreTemp != null && scoreTemp != ""){
+            val typeScore = object : TypeToken<MutableList<Int>>() {}.type
+            highScores = Gson().fromJson(scoreTemp, typeScore)
+        }
         sound = soundPool.load(activity, R.raw.shoot, 1)
         this.screenX = screenX
         this.screenY = screenY
@@ -72,6 +84,9 @@ class GameView : SurfaceView, Runnable {
         bullets = ArrayList()
         background2.x = screenX
         paint = Paint()
+        paint1 = Paint()
+        paint1.color = Color.argb(130,58,198,255)
+
         paint.textSize = 128f
         paint.color = Color.WHITE
         birds = mutableListOf()
@@ -79,6 +94,8 @@ class GameView : SurfaceView, Runnable {
             val bird = Bird(resources)
             birds.add(bird)
         }
+
+        Log.i("Test",Gson().toJson(highScores))
         random = Random()
     }
 
@@ -98,7 +115,13 @@ class GameView : SurfaceView, Runnable {
         }else if (event.x < screenX/2 && event.y  > screenY/2 ){
             flight.goingTo = 1
         }else{
-            flight.goingTo = 2
+            if ((event.x < (screenX - 400) || event.x > (screenX - 150)) || (event.y < (screenY - 400) || (event.y > screenY - 150))){
+                flight.goingTo = 2
+            }
+        }
+
+        if (event.x > (screenX - 400) && event.x < (screenX - 150) && event.y > (screenY - 400) && (event.y < screenY - 150)){
+            newBullet()
         }
 
         return true
@@ -218,6 +241,9 @@ class GameView : SurfaceView, Runnable {
                 waitBeforeExiting()
                 return
             }
+
+            canvas.drawRect(screenX - 400, screenY - 400 , screenX - 150 , screenY -150 ,paint1)
+
             canvas.drawBitmap(flight.getFlight(), flight.x, flight.y, paint)
             for (bird in birds) canvas.drawBitmap(
                     bird.getBird(),
@@ -227,8 +253,9 @@ class GameView : SurfaceView, Runnable {
             )
             canvas.drawText(score.toString() + "", screenX / 2f, 164f, paint)
 
-
-            for (bullet in bullets) canvas.drawBitmap(bullet.bullet, bullet.x, bullet.y, paint)
+            for (bullet in bullets) {
+                canvas.drawBitmap(bullet.bullet, bullet.x, bullet.y, paint)
+            }
             holder.unlockCanvasAndPost(canvas)
         }
     }
@@ -244,11 +271,18 @@ class GameView : SurfaceView, Runnable {
     }
 
     private fun saveIfHighScore() {
-        if (prefs.getInt("highscore", 0) < score) {
-            val editor = prefs.edit()
-            editor.putInt("highscore", score)
-            editor.apply()
+        for (i in 0..5){
+            if (highScores[i] < score){
+                var tempS = highScores[i]
+                highScores[i] = score
+                if (i!=0){
+                    highScores[i-1] = tempS
+                }
+            }
         }
+        val edit = prefs.edit()
+        edit.putString("highScore",Gson().toJson(highScores))
+        edit.apply()
     }
 
     private fun sleep() {

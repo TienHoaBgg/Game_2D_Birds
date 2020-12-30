@@ -4,4 +4,5 @@
     <string name="highScore">High Score</string>
     <string name="play">Play</string>
     <string name="description">Hình ảnh</string>
+    <string name="exit">Exit</string>
 </resources>
